@@ -21,46 +21,44 @@ class transformLinkedin(dml.Algorithm):
         repo = client.repo
         repo.authenticate('emmaliu_gaotian_xli33_yuyangl', 'emmaliu_gaotian_xli33_yuyangl')
         
-        # url = ''
-        # response = urllib.request.urlopen(url).read().decode("utf-8")
-        # r = json.loads(response)
-        # s = json.dumps(r, sort_keys=True, indent=2)
-        # repo.dropCollection("linkedin")
-        # repo.createCollection("linkedin")
-        # repo['emmaliu_gaotian_xli33_yuyangl.linkedin'].insert_many(r)
-        # repo['emmaliu_gaotian_xli33_yuyangl.linkedin'].metadata({'complete': True})
-        # print(repo['emmaliu_gaotian_xli33_yuyangl.linkedin'].metadata())
-
-        # Get Tweets data
+        
+        # Get linkedin data 
         linkedinData = repo.emmaliu_gaotian_xli33_yuyangl.linkedin.find()
-        jobs = []
-        num_change=0
-        # Filter for user's location, project key value pairs.
+        jobs = {}
+        data=[]
+        dataStored=[]
+        countchange=0
+            
         for data in linkedinData:
             if data['query'] == "amman":
                 name = data['name']
                 location = data['query']
                 job = data['job']
+                #print(job)
                 currentJob = data['currentJob']
-                if data['currentJob']:
-                    jobchange = True
+                #print(currentJob)
+                if currentJob == '':
+                    jobchange = False
+                # print(jobchange)
+          #      jobs[name] = jobchange
 
-                names[name] = {'jobchange':jobchange}
-        
-        for name in names:
-            if data['jobchange']:
-                names[name] = {'job':currentJob}
-            else:
-                names[name] = {'job':job}
+            if jobchange == False:
+                    jobs[name] = {'job':job,'currentjob':currentJob,'location':location,'changejob':'yes'}
+            if jobchange != False:
+                    jobs[name] = {'job':job,'currentjob':currentJob,'location':location,'changejob':'no'}
+                    
+            if jobs[name]['changejob'] == 'yes':
+                countchange+=1
 
+                
+        for key,value in jobs.items():
+            # print(key)
+            dataStored.append({'name':key,'job':value['job'],'currentjob':value['currentjob']})
 
-
-        #with open("userLocation .json", 'w') as outfile:
-         #   json.dump(dataStored, outfile, indent=4)
 
         # store results into database
-        repo.dropCollection("userLocation")
-        repo.createCollection("userLocation")
+        repo.dropCollection("transLinkedin")
+        repo.createCollection("transLinkedin")
 
         for i in dataStored:
             # print(i)
@@ -82,38 +80,44 @@ class transformLinkedin(dml.Algorithm):
             document describing that invocation event.
             '''
 
+
         # Set up the database connection.
         client = dml.pymongo.MongoClient()
         repo = client.repo
+
         repo.authenticate('emmaliu_gaotian_xli33_yuyangl', 'emmaliu_gaotian_xli33_yuyangl')
         doc.add_namespace('alg', 'http://datamechanics.io/algorithm/emmaliu_gaotian_xli33_yuyangl')  # The scripts are in <folder>#<filename> format.
         doc.add_namespace('dat', 'http://datamechanics.io/data/emmaliu_gaotian_xli33_yuyangl')  # The data sets are in <user>#<collection> format.
         doc.add_namespace('ont', 'http://datamechanics.io/ontology#')  # 'Extension', 'DataResource', 'DataSet', 'Retrieval', 'Query', or 'Computation'.
         doc.add_namespace('log', 'http://datamechanics.io/log/')  # The event log.
         doc.add_namespace('bdp', '')
+
+
         this_script = doc.agent('alg:emmaliu_gaotian_xli33_yuyangl#transformLinkedin',
                                 {prov.model.PROV_TYPE: prov.model.PROV['SoftwareAgent'], 'ont:Extension': 'py'})
-        resource = doc.entity('dat:emmaliu_gaotian_xli33_yuyangl#linkedin',
+        resource = doc.entity('bdp:linkedinapi',
                               {'prov:label': '311, Service Requests', prov.model.PROV_TYPE: 'ont:DataResource',
                                'ont:Extension': 'json'})
-        transform_linkedin = doc.activity('log:uuid' + str(uuid.uuid4()), startTime, endTime)
-        doc.wasAssociatedWith(transform_linkedin, this_script)
-        doc.usage(transform_linkedin, resource, startTime, None,
-                  {prov.model.PROV_TYPE: 'ont:calculation',
-                   'ont:Query': ''
-                   }
+
+        transform_Linkedin = doc.activity('log:uuid' + str(uuid.uuid4()), startTime, endTime)
+        doc.wasAssociatedWith(transform_Linkedin, this_script)
+        doc.usage(transform_Linkedin, resource, startTime, None,
+                  {prov.model.PROV_TYPE: 'ont:Retrieval',
+                   'ont:Query': '?type=Animal+Found&$select=type,latitude,longitude,OPEN_DT'
+                    }
                   )
-        userLocation = doc.entity('dat:emmaliu_gaotian_xli33_yuyangl#get_linkedin',
-                                  {prov.model.PROV_LABEL: 'linkedin from Amman', prov.model.PROV_TYPE: 'ont:DataSet'})
-        doc.wasAttributedTo(userLocation, this_script)
-        doc.wasGeneratedBy(userLocation, transform_linkedin, endTime)
-        doc.wasDerivedFrom(userLocation, resource, transform_linkedin, transform_linkedin, transform_tweets)
+
+
+        Linkedin = doc.entity('dat:emmaliu_gaotian_xli33_yuyangl#get_linkedin',
+                          {prov.model.PROV_LABEL: 'linkedin', prov.model.PROV_TYPE: 'ont:DataSet'})
+        doc.wasAttributedTo(Linkedin, this_script)
+        doc.wasGeneratedBy(Linkedin, transform_Linkedin, endTime)
+        doc.wasDerivedFrom(Linkedin, resource, transform_Linkedin, transform_Linkedin, transform_Linkedin)
 
         repo.logout()
 
         return doc
 
-transformLinkedin.execute()
+# transformLinkedin.execute()
 # doc = getTweets.provenance()
 # print(doc.get_provn())
-# print(json.dumps(json.loads(doc.serialize()), indent=4))
